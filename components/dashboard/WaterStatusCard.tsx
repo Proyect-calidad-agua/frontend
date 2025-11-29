@@ -1,24 +1,26 @@
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 
 interface WaterStatusCardProps {
+    ph: number;
     temperature: number;
     turbidity: number;
     tds: number;
 }
 
-export function WaterStatusCard({ temperature, turbidity, tds }: WaterStatusCardProps) {
+export function WaterStatusCard({ ph, temperature, turbidity, tds }: WaterStatusCardProps) {
     let status: 'optimal' | 'risk' | 'critical' = 'optimal';
     let message = "Calidad del agua óptima";
 
     // Logic to determine status
+    const isPhBad = ph < 6.5 || ph > 8.5;
     const isTempBad = temperature > 28;
     const isTurbidityBad = turbidity > 5;
     const isTdsBad = tds > 500;
 
-    if (isTempBad && isTurbidityBad && isTdsBad) {
+    if ((isPhBad && isTempBad) || (isPhBad && isTurbidityBad) || (isPhBad && isTdsBad) || (isTempBad && isTurbidityBad) || (isTempBad && isTdsBad) || (isTurbidityBad && isTdsBad)) {
         status = 'critical';
         message = "Calidad crítica: Múltiples parámetros fuera de rango";
-    } else if (isTempBad || isTurbidityBad || isTdsBad) {
+    } else if (isPhBad || isTempBad || isTurbidityBad || isTdsBad) {
         status = 'risk';
         message = "Atención requerida: Parámetros fuera de rango";
     }

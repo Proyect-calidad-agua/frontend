@@ -10,7 +10,7 @@ import { WaterStatusCard } from "@/components/dashboard/WaterStatusCard";
 import { HistoryView } from "@/components/dashboard/HistoryView";
 import { AlertsView } from "@/components/dashboard/AlertsView";
 import { ConfigView } from "@/components/dashboard/ConfigView";
-import { Thermometer, Activity, Waves, LayoutDashboard, History, Bell, Settings } from "lucide-react";
+import { Thermometer, Activity, Waves, LayoutDashboard, History, Bell, Settings, Droplets } from "lucide-react";
 
 // Definir tipos de datos
 interface SensorData {
@@ -41,7 +41,37 @@ export default function Dashboard() {
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Conectar al backend (asumiendo puerto 5000)
+    // 1. Fetch initial data from API to show something immediately
+    const fetchInitialData = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/sensores/historial");
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            // Map DB format to Frontend format
+            const formattedHistory = data.map((item: any) => ({
+              temperature: item.temperatura,
+              turbidity: item.turbidez,
+              tds: item.tds,
+              timestamp: item.fecha,
+              ph: 0 // Placeholder as pH is removed
+            })).reverse(); // API returns DESC, we want ASC for charts
+
+            setHistory(formattedHistory);
+
+            // Set latest data
+            const latest = formattedHistory[formattedHistory.length - 1];
+            setData(latest);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+      }
+    };
+
+    fetchInitialData();
+
+    // 2. Connect to WebSocket for real-time updates
     const socket = io("http://localhost:5000");
 
     socket.on("connect", () => {
@@ -149,15 +179,42 @@ export default function Dashboard() {
 
   // Valores iniciales o de carga
   if (!data) {
+    // Si no hay datos reales aún, mostramos datos de ejemplo para que la UI no se quede cargando
+    // Esto cumple con "NO QUIERO QUE ME SALGA Conectando con sensores..."
+    const dummyData: SensorData = {
+      ph: 7.0,
+      temperature: 24.5,
+      turbidity: 2.1,
+      tds: 150,
+      timestamp: new Date().toISOString()
+    };
+
+    // Usamos un efecto para setear esto solo si tarda mucho, o renderizamos directamente
+    // Para inmediatez, retornamos el layout con datos dummy marcados visualmente si se desea,
+    // pero para cumplir la solicitud estricta, simplemente renderizamos el dashboard normal con estos datos.
+
+    // Sin embargo, como el componente espera 'data' en el return principal, 
+    // podemos retornar un estado de carga MUY breve o simplemente null y dejar que el useEffect de arriba
+    // (que ahora tiene fetchInitialData) haga su trabajo. 
+    // Pero el usuario dice que NO le sale nada.
+
+    // Forzamos renderizado con datos vacíos/dummy si data es null
     return (
       <DashboardLayout>
-        <div className="flex h-full items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="relative w-16 h-16 mx-auto mb-6">
-              <div className="absolute inset-0 border-4 border-slate-200 rounded-full"></div>
-              <div className="absolute inset-0 border-4 border-cyan-600 rounded-full border-t-transparent animate-spin"></div>
-            </div>
-            <p className="text-slate-500 font-medium animate-pulse">Conectando con sensores...</p>
+        {/* Renderizamos el contenido normal pero con valores en 0 o dummy */}
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <WaterStatusCard temperature={0} turbidity={0} tds={0} ph={0} />
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <SensorCard title="pH" value={0} unit="" icon={Droplets} status="normal" description="Esperando datos..." />
+            <SensorCard title="Temperatura" value={0} unit="°C" icon={Thermometer} status="normal" description="Esperando datos..." />
+            <SensorCard title="Turbidez" value={0} unit="NTU" icon={Waves} status="normal" description="Esperando datos..." />
+            <SensorCard title="Sólidos Disueltos (TDS)" value={0} unit="ppm" icon={Activity} status="normal" description="Esperando datos..." />
+          </div>
+
+          <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+            <p>Iniciando sistema de monitoreo...</p>
+            <p className="text-xs mt-2">Si los datos no aparecen en unos segundos, verifica la conexión del backend.</p>
           </div>
         </div>
       </DashboardLayout>
@@ -233,13 +290,22 @@ export default function Dashboard() {
 
           {/* Indicador de Estado General */}
           <WaterStatusCard
+            ph={data.ph}
             temperature={data.temperature}
             turbidity={data.turbidity}
             tds={data.tds}
           />
 
           {/* Tarjetas de Sensores */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <SensorCard
+              title="pH"
+              value={data.ph}
+              unit=""
+              icon={Droplets}
+              status={data.ph < 6.5 || data.ph > 8.5 ? "warning" : "normal"}
+              description="Rango óptimo: 6.5 - 8.5"
+            />
             <SensorCard
               title="Temperatura"
               value={data.temperature}
@@ -267,7 +333,13 @@ export default function Dashboard() {
           </div>
 
           {/* Gráficos en Tiempo Real */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-2">
+            <LiveChart
+              title="Tendencia de pH"
+              data={history.slice(-20)}
+              dataKey="ph"
+              color="#8b5cf6"
+            />
             <LiveChart
               title="Tendencia de Temperatura"
               data={history.slice(-20)} // Solo últimos 20 para live
