@@ -14,7 +14,6 @@ import { Thermometer, Activity, Waves, LayoutDashboard, History, Bell, Settings,
 
 // Definir tipos de datos
 interface SensorData {
-  ph: number;
   temperature: number;
   turbidity: number;
   tds: number;
@@ -177,49 +176,13 @@ export default function Dashboard() {
     setActiveAlerts((prev) => prev.filter((a) => a.id !== id));
   };
 
-  // Valores iniciales o de carga
-  if (!data) {
-    // Si no hay datos reales aún, mostramos datos de ejemplo para que la UI no se quede cargando
-    // Esto cumple con "NO QUIERO QUE ME SALGA Conectando con sensores..."
-    const dummyData: SensorData = {
-      ph: 7.0,
-      temperature: 24.5,
-      turbidity: 2.1,
-      tds: 150,
-      timestamp: new Date().toISOString()
-    };
-
-    // Usamos un efecto para setear esto solo si tarda mucho, o renderizamos directamente
-    // Para inmediatez, retornamos el layout con datos dummy marcados visualmente si se desea,
-    // pero para cumplir la solicitud estricta, simplemente renderizamos el dashboard normal con estos datos.
-
-    // Sin embargo, como el componente espera 'data' en el return principal, 
-    // podemos retornar un estado de carga MUY breve o simplemente null y dejar que el useEffect de arriba
-    // (que ahora tiene fetchInitialData) haga su trabajo. 
-    // Pero el usuario dice que NO le sale nada.
-
-    // Forzamos renderizado con datos vacíos/dummy si data es null
-    return (
-      <DashboardLayout>
-        {/* Renderizamos el contenido normal pero con valores en 0 o dummy */}
-        <div className="space-y-8 animate-in fade-in duration-500">
-          <WaterStatusCard temperature={0} turbidity={0} tds={0} ph={0} />
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <SensorCard title="pH" value={0} unit="" icon={Droplets} status="normal" description="Esperando datos..." />
-            <SensorCard title="Temperatura" value={0} unit="°C" icon={Thermometer} status="normal" description="Esperando datos..." />
-            <SensorCard title="Turbidez" value={0} unit="NTU" icon={Waves} status="normal" description="Esperando datos..." />
-            <SensorCard title="Sólidos Disueltos (TDS)" value={0} unit="ppm" icon={Activity} status="normal" description="Esperando datos..." />
-          </div>
-
-          <div className="p-8 text-center text-slate-500 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-            <p>Iniciando sistema de monitoreo...</p>
-            <p className="text-xs mt-2">Si los datos no aparecen en unos segundos, verifica la conexión del backend.</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Valores iniciales por defecto si no hay datos
+  const displayData = data || {
+    temperature: 0,
+    turbidity: 0,
+    tds: 0,
+    timestamp: new Date().toISOString()
+  };
 
   return (
     <DashboardLayout>
@@ -290,56 +253,44 @@ export default function Dashboard() {
 
           {/* Indicador de Estado General */}
           <WaterStatusCard
-            ph={data.ph}
-            temperature={data.temperature}
-            turbidity={data.turbidity}
-            tds={data.tds}
+            temperature={displayData.temperature}
+            turbidity={displayData.turbidity}
+            tds={displayData.tds}
           />
 
           {/* Tarjetas de Sensores */}
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <SensorCard
-              title="pH"
-              value={data.ph}
-              unit=""
-              icon={Droplets}
-              status={data.ph < 6.5 || data.ph > 8.5 ? "warning" : "normal"}
-              description="Rango óptimo: 6.5 - 8.5"
-            />
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             <SensorCard
               title="Temperatura"
-              value={data.temperature}
+              value={displayData.temperature}
               unit="°C"
               icon={Thermometer}
-              status={data.temperature > 28 ? "warning" : "normal"}
+              status={displayData.temperature > 28 ? "warning" : "normal"}
               description="Rango óptimo: 20 - 28°C"
+              isConnected={isConnected && !!data}
             />
             <SensorCard
               title="Turbidez"
-              value={data.turbidity}
+              value={displayData.turbidity}
               unit="NTU"
               icon={Waves}
-              status={data.turbidity > 5 ? "warning" : "normal"}
+              status={displayData.turbidity > 5 ? "warning" : "normal"}
               description="Máximo permitido: 5 NTU"
+              isConnected={isConnected && !!data}
             />
             <SensorCard
               title="Sólidos Disueltos (TDS)"
-              value={data.tds}
+              value={displayData.tds}
               unit="ppm"
               icon={Activity}
-              status={data.tds > 500 ? "warning" : "normal"}
+              status={displayData.tds > 500 ? "warning" : "normal"}
               description="Máximo recomendado: 500 ppm"
+              isConnected={isConnected && !!data}
             />
           </div>
 
           {/* Gráficos en Tiempo Real */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-2">
-            <LiveChart
-              title="Tendencia de pH"
-              data={history.slice(-20)}
-              dataKey="ph"
-              color="#8b5cf6"
-            />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <LiveChart
               title="Tendencia de Temperatura"
               data={history.slice(-20)} // Solo últimos 20 para live
