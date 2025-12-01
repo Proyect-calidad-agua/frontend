@@ -15,7 +15,7 @@ import { Thermometer, Activity, Waves, LayoutDashboard, History, Bell, Settings,
 // Definir tipos de datos
 interface SensorData {
   temperature: number;
-  turbidity: number;
+  turbidez: number;
   tds: number;
   timestamp: string;
 }
@@ -50,7 +50,7 @@ export default function Dashboard() {
             // Map DB format to Frontend format
             const formattedHistory = data.map((item: any) => ({
               temperature: item.temperatura,
-              turbidity: item.turbidez,
+              turbidez: item.turbidez,
               tds: item.tds,
               timestamp: item.fecha,
               ph: 0 // Placeholder as pH is removed
@@ -122,14 +122,14 @@ export default function Dashboard() {
       newActiveAlerts.push(alert);
       addAlertToHistory(alert);
     }
-    if (data.turbidity > 5) {
+    if (data.turbidez > 5) {
       const alert: Alert = {
         id: timestamp + 'turb',
-        message: `Turbidez elevada: ${data.turbidity} NTU`,
+        message: `Turbidez elevada: ${data.turbidez} NTU`,
         type: "warning",
         timestamp,
         sensor: "Turbidez",
-        value: data.turbidity,
+        value: data.turbidez,
         threshold: 5,
         status: 'pending'
       };
@@ -179,7 +179,7 @@ export default function Dashboard() {
   // Valores iniciales por defecto si no hay datos
   const displayData = data || {
     temperature: 0,
-    turbidity: 0,
+    turbidez: 0,
     tds: 0,
     timestamp: new Date().toISOString()
   };
@@ -254,7 +254,7 @@ export default function Dashboard() {
           {/* Indicador de Estado General */}
           <WaterStatusCard
             temperature={displayData.temperature}
-            turbidity={displayData.turbidity}
+            turbidez={displayData.turbidez}
             tds={displayData.tds}
           />
 
@@ -271,10 +271,10 @@ export default function Dashboard() {
             />
             <SensorCard
               title="Turbidez"
-              value={displayData.turbidity}
+              value={displayData.turbidez}
               unit="NTU"
               icon={Waves}
-              status={displayData.turbidity > 5 ? "warning" : "normal"}
+              status={displayData.turbidez > 5 ? "warning" : "normal"}
               description="Máximo permitido: 5 NTU"
               isConnected={isConnected && !!data}
             />
@@ -300,7 +300,7 @@ export default function Dashboard() {
             <LiveChart
               title="Tendencia de Turbidez"
               data={history.slice(-20)}
-              dataKey="turbidity"
+              dataKey="turbidez"
               color="#eab308"
             />
             <LiveChart
